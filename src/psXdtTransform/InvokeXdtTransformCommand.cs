@@ -10,22 +10,19 @@ namespace psXdtTransform
     [Cmdlet(verbName: "Invoke", nounName: "XdtTransform")]
     public class InvokeXdtTransformCommand : PSCmdlet, IDisposable
     {
-        private const string ParameterSet_TransformPath = "TransformPath";
-        private const string ParameterSet_TransformXml = "TransformXml";
-
         #region Command Parameters
 
         [Parameter(Position = 0)]
         public string SourcePath { get; set; }
         
-        [Parameter(Position = 1, ParameterSetName = ParameterSet_TransformPath, ValueFromPipeline = true)]
+        [Parameter(Position = 1, ValueFromPipeline = true)]
         public string[] TransformPath { get; set; }
 
         [Parameter(Position = 2)]
         public string Destination { get; set; }
 
         [Parameter(Position = 3)]
-        public SwitchParameter Force { get; set; }
+        public SwitchParameter Overwrite { get; set; }
         
         #endregion
 
@@ -33,17 +30,35 @@ namespace psXdtTransform
 
         protected override void BeginProcessing()
         {
+            // Validate parameters.
+            if (this.SourcePath == null)
+            {
+                throw new ArgumentNullException(nameof(this.SourcePath));
+            }
+
+            if (this.Destination == null)
+            {
+                throw new ArgumentNullException(nameof(this.Destination));
+            }
+
+            if (this.TransformPath == null)
+            {
+                throw new ArgumentNullException(nameof(this.TransformPath));
+            }
+
             // Normalize paths.
             this.SourcePath = this.GetUnresolvedProviderPathFromPSPath(this.SourcePath);
             this.Destination = this.GetUnresolvedProviderPathFromPSPath(this.Destination);
 
             if (!File.Exists(this.SourcePath))
             {
-                throw new FileNotFoundException($"The source config, '{this.SourcePath}', could not be found.");
+                throw new FileNotFoundException($"The source file, '{this.SourcePath}', could not be found.");
             }
-
+            
             var destinationExists = File.Exists(this.Destination);
-            if (destinationExists && !this.Force && !ShouldContinue($"The destination, '{this.Destination}', already exists. Do you want to overwrite it?", "Destination exists."))
+            if (destinationExists 
+                && !this.Overwrite 
+                && !this.ShouldContinue($"The destination, '{this.Destination}', already exists. Do you want to overwrite it?", "Destination exists."))
             {
                 throw new OperationCanceledException("User canceled the command.");
             }
@@ -67,7 +82,7 @@ namespace psXdtTransform
             {
                 if (!File.Exists(t))
                 {
-                    throw new FileNotFoundException($"A config transform, '{t}', could not be found.");
+                    throw new FileNotFoundException($"A transform, '{t}', could not be found.");
                 }
             }
 
